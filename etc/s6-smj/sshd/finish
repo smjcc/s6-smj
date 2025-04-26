@@ -1,0 +1,25 @@
+#!/bin/execlineb -S4
+foreground { s6-echo "\nfinish" }
+
+#foreground {
+#	if { eltest ${1} -gt 255 }
+#	kill -9 -- -${4}
+#}
+
+# get inode of /usr/sbin/sshd
+backtick -E sshd { stat -c %i /usr/sbin/sshd }
+
+# for each sshd child of init
+redirfd -r 0 /proc/1/task/1/children
+forstdin -E -d " " pid
+if -t { eltest -e /proc/${pid}/exe }
+backtick -E inode { stat -c %i -L /proc/${pid}/exe }
+if -t { eltest ${inode} = ${sshd} }
+redirfd -r 0 /proc/${pid}/task/${pid}/children
+forstdin -E -d " " shell
+foreground {
+	redirfd -w 1 /proc/${shell}/fd/0
+	s6-echo "\n\n\n==== sshd server has terminated ====\n\n\n"
+}
+s6-echo "notified ${shell}"
+#kill -9 ${shell}

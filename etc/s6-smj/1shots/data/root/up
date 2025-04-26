@@ -1,0 +1,17 @@
+#!/bin/execlineb -P
+# root: ensure root filesystem is writable
+
+# these files moved to /run to avoid frequent writes to SSD, and allow read-only root
+foreground {
+	forx -E boot { motd fstab resolv.conf }
+	if { eltest -f /etc/${boot}.boot }
+	cp -a /etc/${boot}.boot /run/${boot}
+}
+
+ifelse { eltest -w /etc/ } {
+	../up "already writable, done."
+}
+ifelse { s6-mount -n -o remount,rw /dev/root / } {
+	../up "remounted root filesystem as writable, done."
+}
+s6-echo "FIXME: Root filesystem could not be mounted read/write"

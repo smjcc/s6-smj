@@ -1,0 +1,8 @@
+#!/bin/execlineb -P
+# sysctl
+foreground { ../waitup hwclock }
+
+ifelse -n { /usr/sbin/sysctl --system } {
+	s6-echo "FIXME: /usr/sbin/sysctl --system FAILED"
+}
+../up "sysctl"

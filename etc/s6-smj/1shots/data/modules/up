@@ -1,0 +1,13 @@
+#!/bin/execlineb -P
+# modules
+
+elglob -v -0 -s confs /etc/modules-load.d/*.conf
+foreground {
+	forx -p -E conf { ${confs} }
+	forbacktickx -p -E module {
+		redirfd -r 0 ${conf}
+		s6-grep -v "^#"
+	}
+	/sbin/modprobe --verbose --use-blacklist ${module}
+}
+../up "modules"

@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+fdmove -c 2 1
+foreground { s6-echo "\nstart" }
+# signal completion
+foreground { fdmove 1 3	s6-echo } fdclose 3
+/usr/libexec/iwd -d -i wifi

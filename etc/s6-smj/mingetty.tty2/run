@@ -1,0 +1,3 @@
+#!/bin/execlineb -P
+foreground { ../1shots/data/waitup hostname }
+/sbin/mingetty tty2 linux

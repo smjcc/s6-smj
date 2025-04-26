@@ -1,0 +1,15 @@
+#!/bin/execlineb -P
+# hwclock: Set system clock from hardware clock [UTC]
+# note: modern kernels set system clock from hardware before init
+
+#setting the kernel time zone
+foreground {
+	if -n -X -t { /sbin/hwclock -v --systz --utc }
+	s6-echo "FIXME: Failed to set the kernel time zone"
+}
+#adjusting the system clock
+foreground {
+	if -n -X -t { /sbin/hwclock -v --adjust --utc }
+	s6-echo "FIXME: Failed to adjust the system clock"
+}
+../up "hwclock"

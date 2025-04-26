@@ -1,0 +1,7 @@
+#!/bin/execlineb -P
+# exec'd (as PID 1) upon unhandleable conditions: uncontrolled shutdown (crash)
+
+redirfd -w 2 /dev/console
+fdmove -c 1 2
+foreground { s6-echo "s6-svscan crashed." }
+/bin/bash

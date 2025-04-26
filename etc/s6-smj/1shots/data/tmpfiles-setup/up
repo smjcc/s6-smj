@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+# tmpfiles-setup: Set up tmpfiles.d entries
+foreground { ../waitup localmount }
+
+if { tmpfiles --verbose --exclude-prefix=/dev --create --remove --boot }
+../up "tmpfiles-setup"

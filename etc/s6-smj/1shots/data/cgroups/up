@@ -1,0 +1,51 @@
+#!/bin/execlineb -P
+# cgroups
+
+foreground { ../waitup sysfs }
+
+# we now only setup in unified mode
+
+# set up kernel support for cgroups
+#
+# hybrid:  mount cgroups version 2 on /sys/fs/cgroup/unified and
+#          cgroups version 1 on /sys/fs/cgroup.
+# legacy:  mount cgroups version 1 on /sys/fs/cgroup
+# unified: mount cgroups version 2 on /sys/fs/cgroup
+
+ifelse { mountpoint -q /sys/fs/cgroup } {
+	../up "/sys/fs/cgroup already mounted"
+}
+
+#need cgroup support to proceed
+ifelse -n { test -d /sys/fs/cgroup } {
+	s6-echo "/sys/fs/cgroup is not a directory, aborting."
+}
+
+#need cgroup v1 support for hybrid or legacy
+#if -t { grep -qw cgroup /proc/filesystems }
+#need cgroup v2 support for hybrid or unified
+ifelse -n { redirfd -r 0 /proc/filesystems s6-grep -q "	cgroup2$" } {
+	s6-echo "cgroup2 not in /proc/filesystems, aborting."
+}
+#foreground { s6-echo "Mounting cgroup filesystem" }
+#if -n { mount -n -t tmpfs -o nodev,noexec,nosuid cgroup_root /sys/fs/cgroup }
+#foreground { s6-echo "failed to mount /sys/fs/cgroup" }
+#false
+
+#foreground { mkdir -p /sys/fs/cgroup/unified }
+ifelse -n {
+	if -n -t { s6-mount -t cgroup2 -o nodev,noexec,nosuid,nsdelegate none /sys/fs/cgroup }
+	s6-mount -t cgroup2 -o nodev,noexec,nosuid none /sys/fs/cgroup
+} {
+	s6-echo "failed to mount cgroup2 on /sys/fs/cgroup"
+}
+
+#restorecon_cgroups
+ifelse { eltest -x /sbin/restorecon } {
+	foreground { s6-echo "Restoring SELinux contexts in /sys/fs/cgroup" }
+	ifelse { restorecon -rF /sys/fs/cgroup } {
+		../up "cgroup2 restorecon"
+	}
+	s6-echo "restorecon failed"
+}
+../up "cgroup2 no restorecon"

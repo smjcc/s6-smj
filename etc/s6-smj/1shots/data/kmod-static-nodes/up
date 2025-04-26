@@ -1,0 +1,10 @@
+#!/bin/execlineb -P
+# kmod-static-nodes
+foreground { ../waitup devfs }
+
+foreground { s6-echo "Creating list of required static device nodes for the current kernel" }
+foreground { s6-mkdir -p /run/tmpfiles.d }
+ifelse -n { kmod static-nodes --format=tmpfiles --output=/run/tmpfiles.d/kmod.conf } {
+	s6-echo "FIXME: failed"
+}
+../up "kmod-static-nodes"

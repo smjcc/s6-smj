@@ -1,0 +1,5 @@
+#!/bin/execlineb -S4
+foreground { s6-echo "\n finish" }
+
+if { eltest ${1} -gt 255 }
+kill -9 -- -${4}

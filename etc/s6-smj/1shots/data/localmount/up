@@ -1,0 +1,53 @@
+#!/bin/execlineb -P
+# localmount: Mount local filesystems
+foreground { ../waitup hwclock root modules mdevd-coldplug }
+
+# mount everything in /etc/fstab (except 'noauto' and swap)
+# if it's already mounted, remount it with the options from fstab
+
+piperw 7 8
+foreground { fdmove 1 8 s6-echo "success" }
+foreground {
+	# for each line in /etc/fstab
+	pipeline { redirfd -r 0 /etc/fstab sed -e "/^#/d" -e "/^$/d" }
+	#forstdin -p -E tab
+	forstdin -E tab
+	multidefine -d " \t" ${tab} { source mp type options dump pass }
+	backtick -E src {
+		heredoc 0 ${source} sed
+		-e "s:^LABEL=:/dev/disk/by-label/:"
+		-e "s:^UUID=:/dev/disk/by-uuid/:"
+		-e "s:^PARTLABEL=:/dev/disk/by-partlabel/:"
+		-e "s:^PARTUUID=:/dev/disk/by-partuuid/:"
+	}
+	backtick -E mntpt {
+		backtick -E mpt {
+			heredoc 0 ${mp}
+			sed -e "s:\\\\040: :g" -e "s:\\\\011:\t:g"
+		}
+		if -t { eltest -e ${mpt} }
+		s6-linkname -f ${mpt}
+	}
+
+# Alternate method does not use `mountpoint`
+#	backtick -E mntesc {
+#		heredoc 0 ${mntpt}
+#		sed -e s:" ":\\\\\\\\040:g -e s:"	":\\\\\\\\011:g
+#	}
+#	ifelse { redirfd -r 0 /proc/mounts s6-grep -q "^[^ ]* ${mntesc} " } {
+
+	# already mounted?
+	ifelse { mountpoint ${mntpt} } {
+		if -n { s6-mount -o remount,${options} ${src} ${mntpt} }
+		fdmove 1 8 s6-echo failure
+	}
+	if -n -t { eltest ${options} =~ noauto }
+	if -n -t { eltest ${type} = swap }
+	if -n { s6-mount -t ${type} -o ${options} ${src} ${mntpt} }
+	fdmove 1 8 s6-echo failure
+}
+fdclose 8 fdmove 0 7 withstdinas -E test fdclose 7
+ifelse -n { eltest ${test} = success } {
+	s6-echo "FIXME: Some local filesystem failed to mount"
+}
+../up "localmount"

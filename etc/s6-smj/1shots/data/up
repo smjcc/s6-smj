@@ -1,0 +1,8 @@
+#!/bin/execlineb -S1
+# assert that this 1shot is up (allowing waitup to continue)
+# by renaming the pipe so it can't be found by subsequent waitups,
+# and closing the pipe to free any waitups blocked reading from it.
+foreground { mv waitup waitup.done }
+redirfd -wnb 3 waitup.done
+fdclose 3
+s6-echo "up: ${1}"

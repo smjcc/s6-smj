@@ -1,0 +1,20 @@
+#!/bin/execlineb -P
+# if the binfmt_misc filesystem is known to this kernel, mount it on procfs
+#foreground { ../waitup }
+
+# is it already mounted?
+ifelse { mountpoint -q /proc/sys/fs/binfmt_misc/ } {
+	../up "/proc/sys/fs/binfmt_misc/ already mounted"
+}
+
+# is binfmt_misc in the kernel?
+ifelse -n { redirfd -r 0 /proc/filesystems s6-grep -q "	binfmt_misc$" } {
+	../up "binfmt_misc not known to kernel, aborting"
+}
+
+# mount it
+ifelse { s6-mount -t binfmt_misc -o nodev,noexec,nosuid binfmt_misc /proc/sys/fs/binfmt_misc } {
+	../up "/proc/sys/fs/binfmt_misc/ mounted successfully"
+}
+
+s6-echo "FIXME: failed to mount /proc/sys/fs/binfmt_misc"

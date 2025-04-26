@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+# tmpfiles-dev
+foreground { ../waitup devfs }
+
+if { tmpfiles --verbose --prefix=/dev --create --boot }
+../up "tmpfiles-dev"

@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+s6-envuidgid -B syslog:adm
+export GIDLIST ""
+s6-applyuidgid -z -U
+foreground { s6-mkdir -p -m 2750 /run/log/haveged }
+s6-log -b -- T s1000000 n20 /run/log/haveged

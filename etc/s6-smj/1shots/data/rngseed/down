@@ -1,0 +1,4 @@
+#!/bin/execlineb -P
+
+foreground { s6-echo "saving rng seed from entropy pool" }
+/bin/rngseed -v 2 -w

@@ -1,0 +1,51 @@
+#!/bin/execlineb -P
+# mount /sys
+#foreground { ../waitup }
+
+define sysfs_opts "nodev,noexec,nosuid"
+
+# ensure mountpoint /sys
+ifelse -n { s6-mkdir -p -v -m 0755 /sys } {
+	s6-echo "FIXME: Could not create /sys!"
+}
+
+foreground {
+	if -n { mountpoint -q /sys }
+	if -n { s6-mount -n -t sysfs -o ${sysfs_opts} sysfs /sys }
+	s6-echo "FIXME: failed to mount /sys"
+}
+
+#mount_misc
+# do i need to avoid using -o ${sysfs_opts} on /sys/fs/selinux?
+foreground {
+	forx -E -p dirfs {
+		kernel/security:securityfs
+		kernel/debug:debugfs
+		kernel/config:configfs
+		fs/fuse/connections:fusectl
+		fs/selinux:selinuxfs
+		fs/pstore:pstore
+		firmware/efi/efivars:efivarfs
+	}
+	multidefine -d : ${dirfs} { dir fs }
+	ifelse -n { redirfd -r 0 /proc/filesystems s6-grep -q "	${fs}$" } {
+		s6-echo "'${fs}' not found in /proc/filesystems"
+	}
+	if { eltest -d /sys/${dir} }
+	if -n { mountpoint -q /sys/${dir} }
+	if -n { s6-mount -n -t ${fs} -o ${sysfs_opts} ${fs} /sys/${dir} }
+	s6-echo "FAILED: mount -f /sys/${dir}"
+}
+
+# restorecon_sys
+foreground {
+	if -t { eltest -x /sbin/restorecon }
+	foreground { s6-echo "Restoring SELinux contexts in /sys" }
+	if -n {
+		redirfd -w 1 /dev/null
+		fdmove -c 2 1
+		restorecon -F /sys/devices/system/cpu/online
+	}
+	s6-echo "FIXME: failed restoring SELinux contexts in /sys"
+}
+../up "sysfs"

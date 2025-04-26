@@ -1,0 +1,73 @@
+#!/bin/execlineb -S0
+# this is /sbin/init by smj, a part of the s6-smj init system
+
+define logdev console
+#define logdev kmsg
+
+# to allow execlineb to parse without running
+getpid -E pid
+ifelse -n { eltest 1 -eq ${pid} } {
+	s6-echo "must be run as PID 1"
+}
+
+# set stdin/stdout/stderr
+redirfd -r 0 /dev/null
+redirfd -w 1 /dev/${logdev}
+fdmove -c 2 1
+
+foreground { s6-echo "=== /sbin/init logging to /dev/${logdev} ===" }
+
+foreground {
+	if -n -t { mountpoint -q /proc }
+	foreground { s6-mkdir -p -m 000 /proc }
+	s6-mount -t proc proc /proc
+}
+
+#foreground { s6-mount -o mode=1777 -t tmpfs tmpfs /tmp }
+
+foreground { s6-mkdir -p -m 000 /run }
+foreground { s6-mount -o mode=755,gid=4 -t tmpfs tmpfs /run }
+foreground { s6-mkdir -m 755 /run/service }
+foreground { s6-mkdir -m 775 /run/blkid }
+foreground { s6-mkdir -m 2750 /run/log }
+
+foreground { chgrp adm /run/service /run/blkid }
+foreground { chown syslog:adm /run/log }
+
+# Prevent superfluous printks from being printed to the console
+foreground {
+	redirfd -w 1 /proc/sys/kernel/printk
+	s6-echo "3	3	3	3"
+}
+
+#controlled shutdown on three finger salute (edit to taste)
+foreground {
+	redirfd -w 1 /proc/sys/kernel/ctrl-alt-del
+	s6-echo 0
+}
+
+# populate the /run/service directory from the /etc/s6-smj template
+foreground {
+	elglob -s s6 /etc/s6-smj/*
+	cp -a ${s6} /etc/s6-smj/.s6-svscan /run/service/
+}
+foreground { s6-mkfifo /run/service/s6-svscan-log/fifo }
+
+unexport PLL
+unexport boot
+export EXECLINE_STRICT 1
+execline-umask 027
+
+foreground { s6-echo "starting s6" }
+
+#divorce ourselves from stdin
+fdclose 0
+redirfd -r 0 /dev/null
+#keep dev/console as stderr
+fdmove 3 1
+#stdout is the uncaught log
+redirfd -wnb 1 /run/service/s6-svscan-log/fifo
+fdmove -c 2 1
+#start the init system
+s6-svscan -X3 -- /run/service
+

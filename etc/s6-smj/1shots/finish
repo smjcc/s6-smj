@@ -1,0 +1,33 @@
+#!/bin/execlineb -S4
+# run 1shot down scripts
+
+foreground {
+	if { eltest ${1} -gt 255 }
+	foreground { s6-echo "1shots finish '${1}' '${2}' '${3}' '${4}'" }
+	foreground { ps auwx ${4} }
+	kill -9 -- -${4}
+}
+
+fdmove -c 2 1
+foreground { s6-echo "\nstarting 1shot down scripts" }
+
+execline-cd data
+elglob -v -0 -s downs */
+foreground {
+	forx -E -p down { ${downs} }
+	foreground { s6-echo ${down} }
+	execline-cd ${down}
+	foreground {
+		if { eltest -e waitup }
+		redirfd -wn 1 waitup s6-echo
+	}
+	foreground { fuser -k log }
+
+	if -t { eltest -x ./down }
+	redirfd -a 1 log
+	fdmove -c 2 1
+	foreground { s6-echo "\nstopping '${down}'" }
+	./down
+}
+
+s6-echo "all 1shot down scripts completed"

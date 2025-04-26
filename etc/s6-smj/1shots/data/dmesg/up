@@ -1,0 +1,8 @@
+#!/bin/execlineb -P
+# dmesg
+
+foreground { dmesg -n 1 }
+foreground { dmesg -c }
+foreground { ../waitup local }
+foreground { dmesg -c }
+../up "dmesg"

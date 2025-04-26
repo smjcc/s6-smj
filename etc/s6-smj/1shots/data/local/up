@@ -1,0 +1,3 @@
+#!/bin/execlineb -P
+# local
+../up "null local up done"

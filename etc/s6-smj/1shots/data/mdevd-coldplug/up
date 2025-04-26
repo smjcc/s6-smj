@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+# mdevd-coldplug
+foreground { s6-svwait -U /run/service/mdevd }
+
+foreground { mdevd-coldplug -v7 -O4 }
+../up "mdevd-coldplug\n"

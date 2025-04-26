@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+#
+foreground { s6-echo "\nstarting syslog" }
+foreground { s6-mkfifo /dev/log }
+s6-envuidgid syslog
+s6-socklog -t3000 -x /dev/log

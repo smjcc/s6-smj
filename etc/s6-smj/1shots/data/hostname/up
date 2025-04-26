@@ -1,0 +1,11 @@
+#!/bin/execlineb -P
+ifelse { eltest -f /etc/hostname } {
+	foreground {
+		redirfd -r 0 /etc/hostname
+		redirfd -w 1 /proc/sys/kernel/hostname
+		s6-cat
+	}
+	foreground { hostname }
+	../up "hostname up done"
+}
+../up "FIXME: ignoring missing /etc/hostname"

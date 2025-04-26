@@ -1,0 +1,85 @@
+#!/bin/execlineb -P
+# ensure certain devfs devices are present
+# devfs: we assume that devtmpfs is already mounted on /dev
+
+# character devices: console tty tty1 null kmsg
+#	      links: fd stdin stdout stderr
+#	directories: mqueue pts shm
+
+foreground {
+	if -n { eltest -c /dev/console }
+	foreground { mknod -m 600 /dev/console c 5 1 }
+	s6-echo "created /dev/console"
+}
+foreground {
+	if -n { eltest -c /dev/tty }
+	foreground { mknod -m 666 /dev/tty c 5 0 }
+	s6-echo "created /dev/tty"
+}
+foreground {
+	if -n { eltest -c /dev/tty1 }
+	foreground { mknod -m 620 /dev/tty1 c 4 1 }
+	s6-echo "created /dev/tty1"
+}
+foreground {
+	if -n { eltest -c /dev/null }
+	foreground { mknod -m 666 /dev/null c 1 3 }
+	s6-echo "created /dev/null"
+}
+foreground {
+	if -n { eltest -c /dev/kmsg }
+	foreground { mknod -m 660 /dev/kmsg c 1 11 }
+	s6-echo "created /dev/kmsg"
+}
+
+# extra symbolic links not provided by default
+foreground {
+	if -n { eltest -e /dev/fd }
+	foreground { ln -snf /proc/self/fd /dev/fd }
+	s6-echo "created /dev/fd"
+}
+foreground {
+	if -n { eltest -e /dev/stdin }
+	foreground { ln -snf /proc/self/fd/0 /dev/stdin }
+	s6-echo "created /dev/stdin"
+}
+foreground {
+	if -n { eltest -e /dev/stdout }
+	foreground { ln -snf /proc/self/fd/1 /dev/stdout }
+	s6-echo "created /dev/stdout"
+}
+foreground {
+	if -n { eltest -e /dev/stderr }
+	foreground { ln -snf /proc/self/fd/2 /dev/stderr }
+	s6-echo "created /dev/stderr"
+}
+
+# Mount required directories as user may not have them in /etc/fstab
+foreground {
+	if -t { redirfd -r 0 /proc/filesystems s6-grep -q "	mqueue$" }
+	if -n { mountpoint -q /dev/mqueue }
+	foreground { s6-mkdir -p -m 1777 /dev/mqueue }
+	ifelse { s6-mount -n -t mqueue -o noexec,nosuid,nodev mqueue /dev/mqueue } {
+		s6-echo "mounted /dev/mqueue"
+	}
+	s6-echo "failed to mount /dev/mqueue"
+}
+foreground {
+	if -n { mountpoint -q /dev/pts }
+	foreground { s6-mkdir -p -m 0755 /dev/pts }
+	foreground { s6-mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts }
+	s6-echo "mounted /dev/pts"
+}
+foreground {
+	if -n { mountpoint -q /dev/shm }
+	foreground { s6-mkdir -p -m 1777 /dev/shm }
+	foreground { s6-mount -n -t tmpfs -o noexec,nosuid,nodev,mode=1777 shm /dev/shm }
+	s6-echo "mounted /dev/shm"
+}
+foreground {
+	if { eltest -x /sbin/restorecon }
+	foreground { redirfd -w 1 /dev/null fdmove -c 1 2 restorecon -rF /dev }
+	s6-echo "restored SELinux conditions to /dev"
+}
+
+../up "devfs"

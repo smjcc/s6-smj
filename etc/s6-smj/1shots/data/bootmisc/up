@@ -1,0 +1,53 @@
+#!/bin/execlineb -P
+# bootmisc: Satisfy Linux FHS
+
+foreground { ../waitup localmount sysctl }
+
+ifelse -n { redirfd -r 0 /proc/mounts s6-grep -q "^tmpfs /run tmpfs rw" } {
+	s6-echo "FIXME: no tmpfs mounted on /run, aborting"
+}
+
+ifelse -n {
+	forx -E -p -x 77 dir { /run/log /tmp /var/lib/misc /run/lock /run/blkid /run/media }
+	s6-mkdir -p -m 755 ${dir}
+} {
+	s6-echo "FIXME: one of /run/log /tmp /var/lib/misc /run/lock failed to create"
+}
+
+foreground {
+	if -n { eltest -L /var/run -a -e /var/run }
+	foreground { s6-echo "/var/run not a symlink to /run: fixing" }
+	foreground { s6-rmrf /var/run }
+	s6-ln -s /run /var/run
+}
+
+foreground {
+	if -n { eltest -L /var/lock -a -e /var/lock }
+	foreground { s6-echo "/var/lock not a symlink to /run/lock: fixing" }
+	foreground { s6-rmrf /var/lock }
+	s6-ln -s /run/lock /var/lock
+}
+
+foreground {
+	if -n -t { eltest -L /etc/mtab }
+	ifelse { s6-ln -snf /proc/mounts /etc/mtab } {
+		../up "mtab created as link to /proc mounts"
+	}
+	s6-echo "FIXME: failed to create symlink from /etc/mtab to /proc/mounts"
+}
+
+foreground { s6-echo "Cleaning under /run" }
+foreground { mkdir /run/spot.s6 }
+foreground { s6-mount -o bind / /run/spot.s6 }
+foreground { redirfd -w 2 /dev/null s6-rmrf /run/spot.s6/run/ }
+foreground { s6-umount /run/spot.s6 }
+foreground { rmdir /run/spot.s6 }
+
+foreground { s6-echo "Creating user login records" }
+foreground { touch /run/log/wtmp /run/log/utmp /run/log/lastlog }
+foreground { chown root:adm /run/log/lastlog }
+foreground { chmod 640 /run/log/lastlog }
+foreground { chown root:utmp /run/log/wtmp /run/log/utmp }
+foreground { chmod 664 /run/log/wtmp /run/log/utmp }
+
+../up "bootmisc done"

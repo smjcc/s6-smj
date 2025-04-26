@@ -1,0 +1,6 @@
+#!/bin/execlineb -P
+fdmove -c 2 1
+foreground { ../1shots/data/waitup sysfs devfs }
+
+foreground { s6-echo "\nstarting mdevd"  }
+/usr/bin/mdevd -D3 -v7 -O4 -f /etc/mdevd.conf

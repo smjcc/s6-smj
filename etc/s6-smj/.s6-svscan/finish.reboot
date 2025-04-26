@@ -1,0 +1,31 @@
+#!/bin/execlineb -P
+# immediately exec'd into on SIGABRT: controlled shutdown
+# exec'd into upon completion of SIGINT and SIGQUIT
+
+redirfd -w 2 /dev/console
+fdmove -c 1 2
+
+foreground { sync }
+foreground {
+	redirfd -a 1 >/proc/sys/vm/drop_caches
+	s6-echo 3
+}
+foreground { blockdev --flushbufs /dev/root }
+foreground { sync }
+
+# sync, sync, remount-ro, reboot
+ifelse { eltest -e /proc/sysrq-trigger } {
+	foreground { s6-echo "s6-svscan finish: REBOOTING via sysrq" }
+	foreground {
+		redirfd -w 1 /proc/sysrq-trigger
+		foreground { s6-echo "s" }
+		foreground { s6-echo "s" }
+		foreground { s6-echo "u" }
+		s6-echo "b"
+	}
+	foreground { s6-echo "REBOOTING" }
+	waitpid 1
+}
+
+foreground { s6-echo "no /proc/sysrq-trigger" }
+waitpid 1

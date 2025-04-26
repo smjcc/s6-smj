@@ -1,0 +1,4 @@
+#!/bin/execlineb -P
+fdmove -c 2 1
+foreground { s6-echo "\nstart" }
+/usr/sbin/atd -d

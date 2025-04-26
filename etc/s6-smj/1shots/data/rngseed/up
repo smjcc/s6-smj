@@ -1,0 +1,12 @@
+#!/bin/execlineb -P
+# rngseed: read random number generator (rng) seed to entropy pool
+foreground { ../waitup hwclock localmount }
+
+# read the seed (-r) from (-d) /var/lib/rngseed
+ifelse -n { /bin/rngseed -v 2 -r } {
+	s6-echo "FIXME: /bin/rngseed -v 2 -r FAILED"
+}
+# resave to have something in case of crash
+foreground { /bin/rngseed -v 2 -w }
+
+../up "rngseed"

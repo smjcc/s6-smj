@@ -1,0 +1,83 @@
+#!/bin/execlineb -P
+# SIGTERM and SIGINT by default shutdown all processes, then exec into finish
+
+redirfd -w 2 /dev/console
+fdmove -c 1 2
+
+# stop all services
+foreground { sync }
+foreground { s6-svscanctl -t /run/service }
+
+getpid -E self
+foreground { s6-echo "s6-svscan SIGTERM (${self})" }
+
+# notify all shells that we are shutting down
+foreground {
+	if -t { eltest -e /bin/bash }
+	backtick -E bash { stat -c %i /bin/bash }
+	#for each process...
+	elglob -0 -v pids /proc/[0-9]*
+	forx -E pid { ${pids} }
+	if -t { eltest -e ${pid}/exe }
+	backtick -E inode { stat -c %i -L ${pid}/exe }
+	#... which is bash
+	if -t { eltest ${inode} = ${bash} }
+	# notify the shell
+	foreground {
+		redirfd -w 1 ${pid}/fd/0
+		redirfd -r 0 .s6-svscan/ssh-notice
+		s6-cat
+	}
+}
+# log to /dev/kmsg, and trigger shutdown of anything blocked waiting for kmsg
+foreground {
+	redirfd -w 1 /dev/kmsg
+	s6-echo "REBOOTING"
+}
+
+# tickle the watchdog to ensure we reboot
+# ( uncomment this for unattended servers )
+#foreground {
+#	if -t { eltest -e /dev/watchdog }
+#	redirfd -w 1 /dev/watchdog s6-echo
+#}
+
+# while waiting for services to complete
+# show tasks without children, ingoring kernel tasks and s6-log
+# ( comment this section out if you don't have a meaningful console )
+background {
+	execline-cd /proc
+	backtick -E s6-log { stat -L -c %i /bin/s6-log }
+	loopwhilex
+	foreground {
+#doggy	foreground { clear }
+		elglob -0 -v tasks [0-9]*
+		forx -E task { ${tasks} }
+		if -t { eltest -e ${task}/exe }
+		backtick -E inode { stat -L -c %i ${task}/exe }
+		if -t -n { eltest ${inode} = ${s6-log} }
+		if -t { eltest -e ${task}/task/${task}/children }
+		redirfd -r 0 ${task}/task/${task}/children
+		withstdinas -E children
+		if -t { eltest "" = "${children}" }
+		ps h -f ${task}
+	}
+	foreground { s6-echo }
+	s6-sleep 1
+}
+importas ! !
+
+# wait for all logging services to die ... s6-nuke?
+foreground {
+	loopwhilex
+	s6-sleep -m 100
+	pipeline { ps auwx }
+	grep -q "s[6]-log .*/log/"
+}
+
+# then we're done.
+foreground { kill -9 ${!} }
+foreground { clear }
+foreground { pstree -aclupT }
+foreground { sync }
+s6-echo "leaving SIGTERM (${self})"
