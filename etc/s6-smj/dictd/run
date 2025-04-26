@@ -1,0 +1,61 @@
+#!/bin/execlineb -P
+fdmove -c 2 1
+foreground { s6-echo "FIXME: make /etc/dict/dictd.conf symlink to /run" }
+foreground { s6-echo "and signal completion." }
+
+ifelse -n { eltest -e /etc/dict/dictd.conf } {
+	s6-echo "FIXME: /etc/dict/dictd.conf not found"
+}
+foreground { echo Scanning for dictionaries... }
+ifelse -n { eltest -d /usr/share/dict } {
+	s6-echo "FIXME: no directory /usr/share/dict, no dictionaries found."
+}
+backtick -E TMPCONF { mktemp -t dictd.conf.XXXXXXXXXX }
+foreground {
+	redirfd -w 1 ${TMPCONF}
+	foreground {
+		redirfd -r 0 /etc/dict/dictd.conf
+		sed -e "/^#LASTLINE/,$d"
+	}
+	echo "#LASTLINE"
+}
+piperw 7 8
+foreground { 
+	forbacktickx -E i {
+		pipeline { find /usr/share/dict -maxdepth 1 -type f -name \*.index -printf %f\\n }
+		sort
+	}
+	backtick -E DNAME {
+		heredoc 0 ${i}
+		sed -e s/[.]index$//
+	}
+	#two possible names for dictionary, check which is there.
+	backtick -E DICT {
+		ifte {
+			s6-echo "${DNAME}.dict.dz"
+		} {
+			if { eltest -f "/usr/share/dict/${DNAME}.dict" }
+			s6-echo "${DNAME}.dict"
+		} eltest -f "/usr/share/dict/${DNAME}.dict.dz"
+	}
+	ifelse { eltest -z $DICT } {
+		s6-echo "FIXME: Index ${i} has no matching dictionary..."
+	}
+	#will count these later
+	foreground { fdmove -c 1 8 s6-echo ${DNAME} }
+	#ok, go an index, and a dixtionary, append.
+	redirfd -a 1 $TMPCONF
+	s6-echo "database ${DNAME} \{ data \"/usr/share/dict/${DICT}\"\n         index \"/usr/share/dict/${i}\" \}"
+}
+fdclose 8
+backtick -E CNT { fdmove 0 7 wc -l }
+fdclose 7
+ifelse { eltest 0 -eq ${CNT} } {
+	foreground { s6-echo "FIXME: No dictionaries found at\nemerge at least one of app-dicts/dictd-* dictionaries" }
+	s6-rmrf $TMPCONF
+}
+foreground { mv ${TMPCONF} /etc/dict/dictd.conf }
+foreground { chown 0:dictd /etc/dict/dictd.conf }
+foreground { chmod g+r /etc/dict/dictd.conf }
+foreground { s6-echo "Done, ${CNT} dictionaries found, starting dictd" }
+/usr/sbin/dictd --debug nodetach --log timestamp --log notfound --listen-to 127.0.0.1
