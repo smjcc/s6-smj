@@ -4,5 +4,9 @@ foreground { s6-echo "\nUnmounting all filesystems\n" }
 foreground { sync }
 foreground { sync }
 foreground { sync }
+# unmount *everything* but root
 foreground { s6-umount -a }
+# put /proc back, we use it in the shutdown scripts
+foreground { s6-mount -t proc proc /proc }
+# remount root read-only
 s6-mount -o remount,ro /dev/root /
