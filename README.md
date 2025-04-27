@@ -24,7 +24,7 @@ Scripts that run once when booting, and possibly again when shutting down, are m
 
 Services and one-shots block waiting for long-running services to be ready, by using the `s6-svc -U {servicedir}` command.
 
-Services and one-shot block waiting for one-shots to complete, by calling a script that attemtps to read from a named pipe unique to each one-shot.  When a one-shot completes, it closes the pipe, and renames it, so that tasks reading from it will unblock, and future tasks will find the pipe missing and continue.
+Services and one-shots block waiting for one-shots to complete, by calling a script that attemtps to read from a named pipe unique to each one-shot.  When a one-shot completes, it closes the pipe, and renames it, so that tasks reading from it will unblock, and future tasks will find the pipe missing and continue.
 
 Each one-shot logs to it's own log file in it's service directory.
 
