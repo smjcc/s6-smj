@@ -7,17 +7,14 @@ foreground { s6-echo "\nstarting 1shot up scripts" }
 execline-cd data
 elglob -v -0 -s ups */
 
-# first ensure waitup fifos all exist
-foreground {
-	forx -E -p up { ${ups} }
-	foreground { s6-rmrf ${up}/waitup.done }
-	s6-mkfifo ${up}/waitup
-}
-
 foreground {
 	forx -E -p up { ${ups} }
 	foreground { s6-echo "starting '${up}'" }
 	execline-cd ${up}
+	foreground {
+		if eltest -e waitup.done
+		mv waitup.done waitup
+	}
 	redirfd -a 1 log
 	fdmove -c 2 1
 	foreground { s6-echo "\nstarting '${up}'" }

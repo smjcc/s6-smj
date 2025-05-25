@@ -2,9 +2,9 @@
 # wait for each mentioned 1shot to be up
 
 forx -p -E 1shot { /run/service/1shots/data/${@} }
-ifelse { eltest -d ${1shot} } {
-	redirfd -w 2 /dev/null
-	redirfd -r 0 ${1shot}/waitup
-	s6-cat
+ifelse -n { eltest -d ${1shot} } {
+	s6-echo "waitup: no such 1shot '${1shot}'"
 }
-s6-echo "waitup: no such 1shot '${1shot}'"
+redirfd -w 2 /dev/null
+redirfd -r 0 ${1shot}/waitup
+s6-cat

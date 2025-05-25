@@ -51,6 +51,11 @@ foreground {
 	elglob -s s6 /etc/s6-smj/*
 	cp -a ${s6} /etc/s6-smj/.s6-svscan /run/service/
 }
+foreground {
+	elglob -s 1shots /run/service/1shots/data/*/
+	forx -E -p 1shot { ${1shots} }
+	s6-mkfifo ${1shot}/waitup
+}
 foreground { s6-mkfifo /run/service/s6-svscan-log/fifo }
 
 unexport PLL
@@ -70,4 +75,3 @@ redirfd -wnb 1 /run/service/s6-svscan-log/fifo
 fdmove -c 2 1
 #start the init system
 s6-svscan -X3 -- /run/service
-
