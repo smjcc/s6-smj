@@ -37,12 +37,12 @@ foreground {
 #	ifelse { redirfd -r 0 /proc/mounts s6-grep -q "^[^ ]* ${mntesc} " } {
 
 	# already mounted?
+	if -n -t { eltest ${options} =~ noauto }
+	if -n -t { eltest ${type} = swap }
 	ifelse { mountpoint ${mntpt} } {
 		if -n { s6-mount -o remount,${options} ${src} ${mntpt} }
 		fdmove 1 8 s6-echo failure
 	}
-	if -n -t { eltest ${options} =~ noauto }
-	if -n -t { eltest ${type} = swap }
 	if -n { s6-mount -t ${type} -o ${options} ${src} ${mntpt} }
 	fdmove 1 8 s6-echo failure
 }
