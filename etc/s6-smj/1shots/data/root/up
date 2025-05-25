@@ -7,6 +7,13 @@ foreground {
 	if { eltest -f /etc/${boot}.boot }
 	cp -a /etc/${boot}.boot /run/${boot}
 }
+foreground { s6-mkdir -p -m 755 /run/media }
+foreground {
+	ifelse -n { eltest -e /media } { ln -s /run/media /media }
+	if -n { eltest -d /media }
+	s6-echo "warning: /media is not a directory"
+}
+backtick -E medialink { readlink /media }
 
 ifelse { eltest -w /etc/ } {
 	../up "already writable, done."
