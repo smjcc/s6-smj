@@ -12,7 +12,7 @@ foreground {
 	foreground { s6-echo "starting '${up}'" }
 	execline-cd ${up}
 	foreground {
-		if eltest -e waitup.done
+		if { eltest -e waitup.done }
 		mv waitup.done waitup
 	}
 	redirfd -a 1 log
